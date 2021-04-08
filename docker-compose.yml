@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  user-srv-postgres:
+    image: "postgres:13.2"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${PG_USER_PASSWORD}
+      POSTGRES_USER: ${PG_USER_USER}
+      POSTGRES_DB: userservice
+    volumes:
+      - "./postgres/postgres.conf:/usr/local/etc/postgres/postgres.conf"
+      #- "./postgres/data:/var/lib/data/:delegated"
+      #- "./postgres/init:/docker-entrypoint-initdb.d"
+    command: "postgres -c config_file=/usr/local/etc/postgres/postgres.conf"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${PG_USER_USER} -d userservice" ]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+  user-srv-app:
+    build: user-service/.
+    environment:
+      PG_HOST: user-srv-postgres
+      PG_USER: ${PG_USER_USER}
+      PG_PASSWORD: ${PG_USER_PASSWORD}
+      PG_DB: userservice
+      PG_PORT: 5432
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-srv-postgres:
+        condition: service_healthy

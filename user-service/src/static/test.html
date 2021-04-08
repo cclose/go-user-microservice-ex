@@ -1,0 +1,213 @@
+<html>
+<head>
+    <script type="text/javascript">
+        const GET = "GET"
+        const POST = "POST"
+        const PUT = "PUT"
+        const DELETE = "DELETE"
+
+        async function sendRequest(method, url, data) {
+            const options = {
+                method: method
+            }
+
+            if(data != null) {
+                options.headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                };
+                options.body = JSON.stringify(data);
+            }
+            const response = await fetch("http://localhost:8080" + url, options);
+            //.then(response => {
+            //    return { 'code': response.status, 'json': response.json()};
+            //});
+            return {
+                'json': await response.json(),
+                'code': response.status
+            }
+        }
+
+        function makeUser(username, firstname, middlename, lastname, email, telephone) {
+            return {
+                username: username,
+                firstname: firstname,
+                middlename: middlename,
+                lastname: lastname,
+                email: email,
+                telephone: telephone
+            }
+        }
+
+        function log() {
+            console.log(...arguments);
+        }
+
+        function output(message) {
+            let console = document.getElementById("console");
+            let text = console.textContent;
+            text += message + "\n";
+            console.textContent = text;
+        }
+
+        function compareJson(a, b) {
+            let equal = true;
+            Object.keys(a).every((key) => {
+                if(!b.hasOwnProperty(key) || a[key] != b[key]) {
+                    log("ERROR: JSON Mismatch on " + key + ": expected: " + a[key] + " received: " + b[key]);
+                    equal = false;
+                    return false;
+                }
+                return true;
+            })
+
+            return equal;
+        }
+
+        async function runTest() {
+            const userV1ApiURL = "/api/v1/user";
+
+            let console = document.getElementById("console");
+            console.textContent = "";
+
+            output("Starting with empty database.");
+            output("GET " + userV1ApiURL + ":");
+            let response = await sendRequest(GET, userV1ApiURL);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            output("-----");
+
+            output("Create a user:");
+            output("POST " + userV1ApiURL);
+            let bob = makeUser("bobbyBody74", "Bob", "Baron", "Boyd", "bob@bob.com", "(555) 555-5555");
+            let bobPass = "bobbyB0dy74%%!";
+            bob.password = bobPass
+            output("\t Request Json: " + JSON.stringify(bob));
+            response = await sendRequest(POST, userV1ApiURL, bob);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 201) {
+                output("TEST FAILED: Was expecting 201");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            if(typeof response.json.id === 'undefined' || response.json.id == null) {
+                output("TEST FAILED: Invalid ID returned!");
+            }
+            bob.id = response.json.id;
+            output("\tRetrieving user Id " + bob.id);
+            output("\n\tremoving password from User object");
+            delete(bob.password);
+            if(!compareJson(bob, response.json)) {
+                output("TEST FAILED: returned JSON does not match what was sent");
+            }
+            output("-----");
+
+            output("Test GetById:");
+            let userV1ApiBobURL = userV1ApiURL + "/" + bob.id;
+            output("GET " + userV1ApiBobURL );
+            response = await sendRequest(GET, userV1ApiBobURL);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            output("-----");
+
+            output("Test Update:");
+            bob.email = "bob@bob.gov";
+            output("PUT " + userV1ApiBobURL );
+            output("\t Request Json: " + JSON.stringify(bob));
+            response = await sendRequest(PUT, userV1ApiBobURL, bob);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            if(!compareJson(bob, response.json)) {
+                output("TEST FAILED: returned JSON does not match what was sent");
+                return;
+            }
+            output("-----");
+
+            output("Test Authenticate");
+            let headers = new Headers();
+            headers.set("Authorization", "Basic " + btoa(bob.username + ":" + bobPass));
+            output("POST " + userV1ApiURL + "/auth");
+            response = await fetch("http://localhost:8080" + userV1ApiURL + "/auth", { method: POST, headers: headers });
+            let json = await response.json();
+            log({ json: json, code: response.status});
+            output("\tResponse Code: " + response.status);
+            if(response.status !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(json));
+            output("-----");
+
+            output("Test Authenticate w/ wrong password");
+            headers = new Headers();
+            headers.set("Authorization", "Basic " + btoa(bob.username + ":" + "notarealpassword"));
+            output("POST " + userV1ApiURL + "/auth");
+            response = await fetch("http://localhost:8080" + userV1ApiURL + "/auth", { method: POST, headers: headers });
+            json = await response.json();
+            log({ json: json, code: response.status});
+            output("\tResponse Code: " + response.status);
+            if(response.status !== 401) {
+                output("TEST FAILED: Was expecting 401");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(json));
+            output("-----");
+
+            output("Test Delete:");
+            output("DELETE " + userV1ApiBobURL);
+            response = await sendRequest(DELETE, userV1ApiBobURL);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            output("-----");
+
+            output("Test GetAllUsers (should be empty again)");
+            output("GET " + userV1ApiURL + ":");
+            response = await sendRequest(GET, userV1ApiURL);
+            log(response);
+            output("\tResponse Code: " + response.code);
+            if(response.code !== 200) {
+                output("TEST FAILED: Was expecting 200");
+                return;
+            }
+            if(JSON.stringify(response.json) !== "[]") {
+                output("TEST FAILED: Was expecting \"[]\"");
+                return;
+            }
+            output("\tJson: " + JSON.stringify(response.json));
+            output("-----");
+
+            output("ALL TESTS PASSED");
+        }
+    </script>
+</head>
+<body>
+    <h3> User Service Functional Test </h3>
+    <div>
+        <button onclick="runTest()">Run Test</button>
+    </div>
+    <div>
+        <textarea id="console" readonly="readonly" rows="50" cols="175"></textarea>
+    </div>
+</body>
+</html>
