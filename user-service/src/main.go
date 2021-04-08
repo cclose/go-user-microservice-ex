@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/cclose/go-user-microservice-ex/user-service/src/controllers"
-	"github.com/cclose/go-user-microservice-ex/user-service/src/models"
 	"github.com/cclose/go-user-microservice-ex/user-service/src/service"
 	"net/http"
 	"os"
@@ -16,7 +14,6 @@ func main() {
 	userService := service.UserService{}
 	userService.Initialize()
 	defer userService.Dbh.Disconnect()
-	userService.Router.HandleFunc("/", Home)
 	userService.Router.HandleFunc("/test", ServeTest)
 
 	// api v1 router
@@ -37,17 +34,6 @@ func main() {
 		os.Exit(1)
 	}
 	userService.Logger.Println("[status] [online] User Service online and ready to serve")
-}
-
-// Home TODO: Make this serve Swagger document describing the API?
-func Home(writer http.ResponseWriter, request *http.Request) {
-	m := models.Message{Message: "Hello, World!"}
-	jsonStr, err := json.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-
-	writer.Write(jsonStr)
 }
 
 func ServeTest(writer http.ResponseWriter, request *http.Request) {

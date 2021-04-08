@@ -10,8 +10,6 @@ services:
       POSTGRES_DB: userservice
     volumes:
       - "./postgres/postgres.conf:/usr/local/etc/postgres/postgres.conf"
-      #- "./postgres/data:/var/lib/data/:delegated"
-      #- "./postgres/init:/docker-entrypoint-initdb.d"
     command: "postgres -c config_file=/usr/local/etc/postgres/postgres.conf"
     ports:
       - "5432:5432"
