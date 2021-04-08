@@ -75,6 +75,7 @@ email | must be unique and vaguely look like an email address (contain 1 and onl
 firstname | is required
 lastname | is required
 telephone | is required and must be of the form (###) ###-####[ x#####]. Extension is optional, max length of 5, with an optional space before the x
+password | password must be between 8 and 25 characters, contain at least 1 of: lower case, upper case, number, and special character
 
 ### Routes
 
